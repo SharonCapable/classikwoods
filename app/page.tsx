@@ -78,11 +78,15 @@ export default function HomePage() {
             onClick={() => setSelectedProject(projects[0])}
           >
             <Image
-              src={projects[0].image_url}
+              src={projects[0].image_url || '/placeholder-project.jpg'}
               alt={projects[0].title}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               priority
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://via.placeholder.com/800x450?text=Project+Image';
+              }}
             />
             <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
               <h3 className="font-black text-2xl mb-1">{projects[0].title}</h3>
@@ -104,11 +108,15 @@ export default function HomePage() {
             >
               <div className="relative rounded-xl overflow-hidden shadow-sm bg-gray-50">
                 <Image
-                  src={project.image_url}
+                  src={project.image_url || 'https://via.placeholder.com/600x400?text=Project+Image'}
                   alt={project.title}
                   width={600}
                   height={400}
                   className="object-cover w-full h-64 transition-transform duration-300 group-hover:scale-105"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://via.placeholder.com/600x400?text=Project+Image';
+                  }}
                 />
                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
                   <h3 className="font-bold text-lg mb-1">{project.title}</h3>

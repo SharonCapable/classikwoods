@@ -19,6 +19,7 @@ import {
   MessageSquare
 } from 'lucide-react'
 import NotificationToast from '@/components/NotificationToast'
+import ImageUpload from '@/components/ImageUpload'
 import type { Project, BookingSubmission } from '@/types'
 
 interface Notification {
@@ -34,9 +35,18 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'projects' | 'bookings'>('projects')
   const [showProjectModal, setShowProjectModal] = useState(false)
-  const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [showAddProjectModal, setShowAddProjectModal] = useState(false)
+  const [showEditProjectModal, setShowEditProjectModal] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [newProject, setNewProject] = useState({
+    title: '',
+    description: '',
+    project_type: '',
+    image_url: '',
+    materials: '',
+    client_story: ''
+  })
+  const [editProject, setEditProject] = useState({
     title: '',
     description: '',
     project_type: '',
@@ -88,7 +98,11 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/')
+    // Clear any cached data
+    setProjects([])
+    setBookings([])
+    // Force redirect to home page
+    window.location.href = '/'
   }
 
   const deleteProject = async (id: string) => {
@@ -101,7 +115,7 @@ export default function AdminPage() {
         .eq('id', id)
 
       if (error) throw error
-
+      
       setProjects(projects.filter(p => p.id !== id))
     } catch (error) {
       console.error('Error deleting project:', error)
@@ -130,7 +144,7 @@ export default function AdminPage() {
         .eq('id', id)
 
       if (error) throw error
-
+      
       const booking = bookings.find(b => b.id === id)
       setBookings(bookings.map(b => 
         b.id === id ? { ...b, status: status as any } : b
@@ -167,8 +181,8 @@ export default function AdminPage() {
   }
 
   const addProject = async () => {
-    try {
-      const { error } = await supabase
+  try {
+    const { error } = await supabase
         .from('projects')
         .insert([{
           ...newProject,
@@ -195,12 +209,64 @@ export default function AdminPage() {
         title: 'Project Added',
         message: `"${newProject.title}" has been added to your portfolio.`
       })
-    } catch (error) {
+  } catch (error) {
       console.error('Error adding project:', error)
       addNotification({
         type: 'error',
         title: 'Add Project Failed',
         message: 'Failed to add project. Please try again.'
+      })
+    }
+  }
+
+  const startEditProject = (project: Project) => {
+    setEditingProject(project)
+    setEditProject({
+      title: project.title,
+      description: project.description,
+      project_type: project.project_type,
+      image_url: project.image_url,
+      materials: project.materials || '',
+      client_story: project.client_story || ''
+    })
+    setShowEditProjectModal(true)
+  }
+
+  const updateProject = async () => {
+    if (!editingProject) return
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update(editProject)
+        .eq('id', editingProject.id)
+
+      if (error) throw error
+
+      // Reload projects
+      await loadData()
+      setShowEditProjectModal(false)
+      setEditingProject(null)
+      setEditProject({
+        title: '',
+        description: '',
+        project_type: '',
+        image_url: '',
+        materials: '',
+        client_story: ''
+      })
+
+      addNotification({
+        type: 'success',
+        title: 'Project Updated',
+        message: `"${editProject.title}" has been updated successfully.`
+      })
+    } catch (error) {
+      console.error('Error updating project:', error)
+      addNotification({
+        type: 'error',
+        title: 'Update Failed',
+        message: 'Failed to update project. Please try again.'
       })
     }
   }
@@ -221,9 +287,9 @@ export default function AdminPage() {
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+      {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <div>
+            <div>
             <h1 className="text-3xl font-bold text-wood-800">Admin Dashboard</h1>
             <p className="text-gray-600">Manage projects and bookings</p>
           </div>
@@ -236,7 +302,7 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Tabs */}
+      {/* Tabs */}
         <div className="border-b border-gray-200 mb-8">
           <nav className="-mb-px flex space-x-8">
             <button
@@ -249,23 +315,23 @@ export default function AdminPage() {
             >
               Projects ({projects.length})
             </button>
-            <button
+              <button
               onClick={() => setActiveTab('bookings')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'bookings'
-                  ? 'border-wood-500 text-wood-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
+                    ? 'border-wood-500 text-wood-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
               Bookings ({bookings.length})
-            </button>
+              </button>
           </nav>
         </div>
 
-        {/* Projects Tab */}
-        {activeTab === 'projects' && (
-          <div>
-            <div className="flex justify-between items-center mb-6">
+              {/* Projects Tab */}
+              {activeTab === 'projects' && (
+                <div>
+                  <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Projects</h2>
               <button
                 onClick={() => setShowAddProjectModal(true)}
@@ -273,11 +339,11 @@ export default function AdminPage() {
               >
                 <Plus className="h-5 w-5" />
                 <span>Add Project</span>
-              </button>
-            </div>
-
+                    </button>
+                  </div>
+                  
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((project) => (
+                        {projects.map((project) => (
                 <div key={project.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
                   <div className="aspect-video bg-gray-100 rounded-t-lg overflow-hidden">
                     <img
@@ -285,7 +351,7 @@ export default function AdminPage() {
                       alt={project.title}
                       className="w-full h-full object-cover"
                     />
-                  </div>
+                              </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-900 mb-2">{project.title}</h3>
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">{project.description}</p>
@@ -293,7 +359,7 @@ export default function AdminPage() {
                       <span className="text-xs text-gray-500">{project.project_type}</span>
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => setEditingProject(project)}
+                          onClick={() => startEditProject(project)}
                           className="p-1 text-gray-400 hover:text-gray-600"
                         >
                           <Edit className="h-4 w-4" />
@@ -302,72 +368,72 @@ export default function AdminPage() {
                           onClick={() => deleteProject(project.id)}
                           className="p-1 text-gray-400 hover:text-red-600"
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
                     </div>
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
+                  </div>
+                </div>
+              )}
 
-        {/* Bookings Tab */}
-        {activeTab === 'bookings' && (
-          <div>
+              {/* Bookings Tab */}
+              {activeTab === 'bookings' && (
+                <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Bookings</h2>
-            
+                  
             <div className="bg-white shadow-sm rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Client
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Client
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Project
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Budget
-                      </th>
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Budget
+                          </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {bookings.map((booking) => (
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {bookings.map((booking) => (
                       <tr key={booking.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{booking.name}</div>
-                            <div className="text-sm text-gray-500">{booking.email}</div>
-                            {booking.phone && (
-                              <div className="text-sm text-gray-500">{booking.phone}</div>
-                            )}
-                          </div>
-                        </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{booking.name}</div>
+                                <div className="text-sm text-gray-500">{booking.email}</div>
+                                {booking.phone && (
+                                  <div className="text-sm text-gray-500">{booking.phone}</div>
+                                )}
+                              </div>
+                            </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">{booking.project_type}</div>
                           <div className="text-sm text-gray-500 line-clamp-2">{booking.message}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {booking.budget}
-                        </td>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {booking.budget}
+                            </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {new Date(booking.preferred_date).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <select
-                            value={booking.status}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <select
+                                value={booking.status}
                             onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
                             className={`text-sm border rounded px-2 py-1 ${
                               booking.status === 'pending' ? 'border-yellow-300 bg-yellow-50' :
@@ -376,27 +442,27 @@ export default function AdminPage() {
                               booking.status === 'completed' ? 'border-purple-300 bg-purple-50' :
                               'border-red-300 bg-red-50'
                             }`}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="contacted">Contacted</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
-                        </td>
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
+                            </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button className="text-wood-600 hover:text-wood-900">
-                            <Eye className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                                <button className="text-wood-600 hover:text-wood-900">
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
               </div>
-            </div>
-          </div>
-        )}
+                  </div>
+                </div>
+              )}
       </div>
 
       {/* Add Project Modal */}
@@ -467,18 +533,10 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Image URL
-                    </label>
-                    <input
-                      type="url"
-                      value={newProject.image_url}
-                      onChange={(e) => setNewProject({...newProject, image_url: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
-                      placeholder="https://example.com/image.jpg"
-                    />
-                  </div>
+                  <ImageUpload
+                    onImageUploaded={(url) => setNewProject({...newProject, image_url: url})}
+                    currentImageUrl={newProject.image_url}
+                  />
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -506,6 +564,116 @@ export default function AdminPage() {
                     className="px-4 py-2 bg-wood-600 text-white rounded-lg hover:bg-wood-700"
                   >
                     Add Project
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {showEditProjectModal && editingProject && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-75">
+          <div className="min-h-screen px-4 flex items-center justify-center">
+            <div className="bg-white rounded-xl overflow-hidden max-w-2xl w-full shadow-2xl">
+              <div className="p-6">
+                <h3 className="text-2xl font-bold mb-6">Edit Project</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Project Title
+                    </label>
+                    <input
+                      type="text"
+                      value={editProject.title}
+                      onChange={(e) => setEditProject({...editProject, title: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      placeholder="Enter project title"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={editProject.description}
+                      onChange={(e) => setEditProject({...editProject, description: e.target.value})}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      placeholder="Enter project description"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Project Type
+                      </label>
+                      <select
+                        value={editProject.project_type}
+                        onChange={(e) => setEditProject({...editProject, project_type: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      >
+                        <option value="">Select type</option>
+                        <option value="furniture">Furniture</option>
+                        <option value="cabinets">Cabinets</option>
+                        <option value="built-ins">Built-ins</option>
+                        <option value="restoration">Restoration</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Materials
+                      </label>
+                      <input
+                        type="text"
+                        value={editProject.materials}
+                        onChange={(e) => setEditProject({...editProject, materials: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                        placeholder="e.g., Oak, Steel"
+                      />
+                    </div>
+                  </div>
+
+                  <ImageUpload
+                    onImageUploaded={(url) => setEditProject({...editProject, image_url: url})}
+                    currentImageUrl={editProject.image_url}
+                  />
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Client Story (Optional)
+                    </label>
+                    <textarea
+                      value={editProject.client_story}
+                      onChange={(e) => setEditProject({...editProject, client_story: e.target.value})}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      placeholder="Tell the story behind this project"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-4 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowEditProjectModal(false)
+                      setEditingProject(null)
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={updateProject}
+                    className="px-4 py-2 bg-wood-600 text-white rounded-lg hover:bg-wood-700"
+                  >
+                    Update Project
                   </button>
                 </div>
               </div>
