@@ -34,7 +34,7 @@ export default function UploadTest() {
       }
 
       // 1. Upload the image and get its URL
-      const imageUrl = await uploadImage(file)
+      const imageUrl = await uploadProjectImage(file)
 
       // 2. Create the project entry in the database
       const { error: projectError } = await supabase
