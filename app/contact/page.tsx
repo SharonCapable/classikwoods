@@ -87,17 +87,12 @@ export default function ContactPage() {
       {/* Header */}
       <section className="bg-gradient-to-br from-wood-50 to-sage-50 section-padding">
         <div className="container-max">
-          <Link href="/" className="inline-flex items-center text-wood-600 hover:text-wood-700 mb-8">
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            Back to Home
-          </Link>
-          
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-serif font-bold text-wood-800 mb-6">
-              Get in Touch
+              Contact Us
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Have a question about our services or want to discuss your project? 
+              Have questions or want to discuss your woodworking needs? We're here to help.
               We'd love to hear from you and help bring your vision to life.
             </p>
           </div>

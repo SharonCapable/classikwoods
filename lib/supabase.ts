@@ -1,21 +1,11 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
-}
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-})
-
-// Create a function to handle image uploads
-export async function uploadImage(file: File) {
+export async function uploadProjectImage(file: File) {
   try {
     // Create a unique file name
     const fileExt = file.name.split('.').pop()
@@ -38,38 +28,4 @@ export async function uploadImage(file: File) {
     console.error('Error uploading image:', error)
     throw error
   }
-}
-
-// Types for our database tables
-export interface Project {
-  id: string
-  title: string
-  description: string
-  image_url: string
-  materials?: string
-  project_type: string
-  client_story?: string
-  created_at: string
-  featured?: boolean
-}
-
-export interface ContactSubmission {
-  id: string
-  name: string
-  email: string
-  phone?: string
-  message: string
-  created_at: string
-}
-
-export interface BookingSubmission {
-  id: string
-  name: string
-  email: string
-  project_type: string
-  preferred_date: string
-  budget: string
-  message?: string
-  created_at: string
-  status: 'pending' | 'contacted' | 'scheduled' | 'completed'
 }

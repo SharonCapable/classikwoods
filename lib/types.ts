@@ -11,6 +11,23 @@ interface Project {
   image_url: string
   project_type: string
   created_at: string
+  materials?: string
+  client_story?: string
 }
 
-export type { AuthState, Project }
+type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
+
+interface BookingSubmission {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  project_type: string
+  preferred_date: string
+  budget: string
+  message: string
+  status: BookingStatus
+  created_at: string
+}
+
+export type { AuthState, Project, BookingSubmission, BookingStatus }

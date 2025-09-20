@@ -9,10 +9,8 @@ export default function Navigation() {
 
   const navigation = [
     { name: 'Home', href: '/' },
-    { name: 'Portfolio', href: '/portfolio' },
-    { name: 'Services', href: '/#services' },
-    { name: 'About', href: '/#about' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'About', href: '/about' },
+    { name: 'Login', href: '/login' }
   ]
 
   return (
@@ -38,7 +36,7 @@ export default function Navigation() {
                 {item.name}
               </Link>
             ))}
-            <Link href="/booking" className="btn-primary">
+            <Link href="/about#booking" className="btn-primary">
               Book Service
             </Link>
           </div>
@@ -69,7 +67,7 @@ export default function Navigation() {
                 </Link>
               ))}
               <Link
-                href="/booking"
+                href="/about#booking"
                 className="btn-primary inline-block text-center"
                 onClick={() => setIsOpen(false)}
               >

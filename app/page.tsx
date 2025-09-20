@@ -1,31 +1,64 @@
-import Link from 'next/link'
-import Image from 'next/image'
-import { supabase } from '@/lib/supabase'
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import Navigation from '@/components/Navigation';
+import ProjectModal from '@/components/ProjectModal';
+import { supabase } from '@/lib/supabase';
+import type { Project } from '@/types';
 
 async function getProjects() {
-  const { data: projects } = await supabase
-    .from('projects')
-    .select('*')
-    .order('created_at', { ascending: false });
-  return projects || [];
+  try {
+    const { data: projects, error } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return projects || [];
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    return [];
+  }
 }
 
-export default async function HomePage() {
-  const projects = await getProjects();
-  const featuredProject = projects[0];
+export default function HomePage() {
+  const [projects, setProjects] = useState<Project[]>([])
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  const handleBookProject = () => {
+    if (selectedProject) {
+      router.push(`/about?project_type=${encodeURIComponent(selectedProject.project_type)}`);
+    }
+  };
+
+  useEffect(() => {
+    async function loadProjects() {
+      const data = await getProjects()
+      setProjects(data)
+      setLoading(false)
+    }
+    loadProjects()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navigation />
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wood-600"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header/Nav */}
-      <header className="flex items-center justify-between px-8 py-6">
-        <div className="font-black text-2xl tracking-tight">CLASSIK WOODS</div>
-        <nav className="flex-1 flex justify-center gap-8 text-lg font-semibold">
-          <a href="/" className="text-black">Home</a>
-          <a href="/about" className="text-gray-400 hover:text-black">About</a>
-          <a href="/contact" className="text-gray-400 hover:text-black">Contact</a>
-        </nav>
-        <div className="text-gray-400 text-xl font-semibold">Interior Furniture Design</div>
-      </header>
+      <Navigation />
 
       {/* Intro Section */}
       <section className="px-8 py-16">
@@ -38,19 +71,23 @@ export default async function HomePage() {
       </section>
 
       {/* Featured Project */}
-      {featuredProject && (
+      {projects[0] && (
         <section className="px-8 mb-16">
-          <div className="relative aspect-[16/9] max-w-6xl mx-auto overflow-hidden rounded-xl">
+          <div 
+            className="relative aspect-[16/9] max-w-6xl mx-auto overflow-hidden rounded-xl cursor-pointer group"
+            onClick={() => setSelectedProject(projects[0])}
+          >
             <Image
-              src={featuredProject.image_url}
-              alt={featuredProject.title}
+              src={projects[0].image_url}
+              alt={projects[0].title}
               fill
-              className="object-cover"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
               priority
             />
-            <div className="absolute bottom-4 left-4 right-4 bg-white/90 rounded-lg px-4 py-2 flex items-center justify-between shadow">
-              <span className="font-black text-lg text-gray-900">{featuredProject.title}</span>
-              <span className="text-gray-400 text-base font-medium">{featuredProject.project_type}</span>
+            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
+              <h3 className="font-black text-2xl mb-1">{projects[0].title}</h3>
+              <p className="text-white/80">{projects[0].description}</p>
+              <span className="mt-2 inline-block text-wood-300">Click to view details →</span>
             </div>
           </div>
         </section>
@@ -60,24 +97,34 @@ export default async function HomePage() {
       <section className="px-8 pb-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           {projects.slice(1).map((project) => (
-            <Link href={`/projects/${project.id}`} key={project.id}>
+            <div
+              key={project.id}
+              onClick={() => setSelectedProject(project)}
+              className="group cursor-pointer"
+            >
               <div className="relative rounded-xl overflow-hidden shadow-sm bg-gray-50">
                 <Image
                   src={project.image_url}
                   alt={project.title}
                   width={600}
                   height={400}
-                  className="object-cover w-full h-64"
+                  className="object-cover w-full h-64 transition-transform duration-300 group-hover:scale-105"
                 />
-                <div className="absolute bottom-4 left-4 right-4 bg-white/90 rounded-lg px-4 py-2 flex items-center justify-between shadow">
-                  <span className="font-black text-lg text-gray-900">{project.title}</span>
-                  <span className="text-gray-400 text-base font-medium">{project.project_type}</span>
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white">
+                  <h3 className="font-bold text-lg mb-1">{project.title}</h3>
+                  <p className="text-white/80 text-sm">{project.project_type}</p>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       </section>
+
+      <ProjectModal
+        project={selectedProject}
+        onClose={() => setSelectedProject(null)}
+        onBook={handleBookProject}
+      />
     </div>
   )
 }

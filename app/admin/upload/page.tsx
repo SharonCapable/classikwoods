@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase, uploadImage } from '@/lib/supabase'
+import { supabase, uploadProjectImage } from '@/lib/supabase'
 import Image from 'next/image'
 
 export default function UploadTest() {
