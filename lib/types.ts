@@ -15,7 +15,7 @@ interface Project {
   client_story?: string
 }
 
-type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
+type BookingStatus = 'pending' | 'contacted' | 'scheduled' | 'completed' | 'cancelled'
 
 interface BookingSubmission {
   id: string

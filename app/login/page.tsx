@@ -30,7 +30,8 @@ function LoginForm() {
 
       if (error) throw error
 
-      router.push(redirectTo)
+      // Always redirect to admin dashboard after successful login
+      router.push('/admin')
     } catch (error: any) {
       setError(error.message)
     } finally {

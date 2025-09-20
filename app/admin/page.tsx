@@ -18,7 +18,15 @@ import {
   Phone,
   MessageSquare
 } from 'lucide-react'
+import NotificationToast from '@/components/NotificationToast'
 import type { Project, BookingSubmission } from '@/types'
+
+interface Notification {
+  id: string
+  type: 'success' | 'error' | 'info'
+  title: string
+  message: string
+}
 
 export default function AdminPage() {
   const [projects, setProjects] = useState<Project[]>([])
@@ -27,6 +35,16 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'projects' | 'bookings'>('projects')
   const [showProjectModal, setShowProjectModal] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false)
+  const [newProject, setNewProject] = useState({
+    title: '',
+    description: '',
+    project_type: '',
+    image_url: '',
+    materials: '',
+    client_story: ''
+  })
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const router = useRouter()
 
   useEffect(() => {
@@ -53,7 +71,7 @@ export default function AdminPage() {
 
       // Load bookings
       const { data: bookingsData, error: bookingsError } = await supabase
-        .from('bookings')
+        .from('booking_submissions')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -90,20 +108,100 @@ export default function AdminPage() {
     }
   }
 
+  const addNotification = (notification: Omit<Notification, 'id'>) => {
+    const id = crypto.randomUUID()
+    setNotifications(prev => [...prev, { ...notification, id }])
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      removeNotification(id)
+    }, 5000)
+  }
+
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+  }
+
   const updateBookingStatus = async (id: string, status: string) => {
     try {
       const { error } = await supabase
-        .from('bookings')
+        .from('booking_submissions')
         .update({ status })
         .eq('id', id)
 
       if (error) throw error
 
+      const booking = bookings.find(b => b.id === id)
       setBookings(bookings.map(b => 
         b.id === id ? { ...b, status: status as any } : b
       ))
+
+      // Add notification based on status change
+      if (status === 'contacted') {
+        addNotification({
+          type: 'info',
+          title: 'Booking Contacted',
+          message: `You've marked the booking from ${booking?.name} as contacted.`
+        })
+      } else if (status === 'scheduled') {
+        addNotification({
+          type: 'success',
+          title: 'Booking Scheduled',
+          message: `Booking from ${booking?.name} has been scheduled.`
+        })
+      } else if (status === 'completed') {
+        addNotification({
+          type: 'success',
+          title: 'Project Completed',
+          message: `Project for ${booking?.name} has been marked as completed.`
+        })
+      }
     } catch (error) {
       console.error('Error updating booking status:', error)
+      addNotification({
+        type: 'error',
+        title: 'Update Failed',
+        message: 'Failed to update booking status. Please try again.'
+      })
+    }
+  }
+
+  const addProject = async () => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .insert([{
+          ...newProject,
+          id: crypto.randomUUID(),
+          created_at: new Date().toISOString()
+        }])
+
+      if (error) throw error
+
+      // Reload projects
+      await loadData()
+      setShowAddProjectModal(false)
+      setNewProject({
+        title: '',
+        description: '',
+        project_type: '',
+        image_url: '',
+        materials: '',
+        client_story: ''
+      })
+
+      addNotification({
+        type: 'success',
+        title: 'Project Added',
+        message: `"${newProject.title}" has been added to your portfolio.`
+      })
+    } catch (error) {
+      console.error('Error adding project:', error)
+      addNotification({
+        type: 'error',
+        title: 'Add Project Failed',
+        message: 'Failed to add project. Please try again.'
+      })
     }
   }
 
@@ -170,7 +268,7 @@ export default function AdminPage() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Projects</h2>
               <button
-                onClick={() => setShowProjectModal(true)}
+                onClick={() => setShowAddProjectModal(true)}
                 className="btn-primary flex items-center space-x-2"
               >
                 <Plus className="h-5 w-5" />
@@ -271,10 +369,17 @@ export default function AdminPage() {
                           <select
                             value={booking.status}
                             onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
-                            className="text-sm border border-gray-300 rounded px-2 py-1"
+                            className={`text-sm border rounded px-2 py-1 ${
+                              booking.status === 'pending' ? 'border-yellow-300 bg-yellow-50' :
+                              booking.status === 'contacted' ? 'border-blue-300 bg-blue-50' :
+                              booking.status === 'scheduled' ? 'border-green-300 bg-green-50' :
+                              booking.status === 'completed' ? 'border-purple-300 bg-purple-50' :
+                              'border-red-300 bg-red-50'
+                            }`}
                           >
                             <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
+                            <option value="contacted">Contacted</option>
+                            <option value="scheduled">Scheduled</option>
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                           </select>
@@ -293,6 +398,127 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* Add Project Modal */}
+      {showAddProjectModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-75">
+          <div className="min-h-screen px-4 flex items-center justify-center">
+            <div className="bg-white rounded-xl overflow-hidden max-w-2xl w-full shadow-2xl">
+              <div className="p-6">
+                <h3 className="text-2xl font-bold mb-6">Add New Project</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Project Title
+                    </label>
+                    <input
+                      type="text"
+                      value={newProject.title}
+                      onChange={(e) => setNewProject({...newProject, title: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      placeholder="Enter project title"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={newProject.description}
+                      onChange={(e) => setNewProject({...newProject, description: e.target.value})}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      placeholder="Enter project description"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Project Type
+                      </label>
+                      <select
+                        value={newProject.project_type}
+                        onChange={(e) => setNewProject({...newProject, project_type: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      >
+                        <option value="">Select type</option>
+                        <option value="furniture">Furniture</option>
+                        <option value="cabinets">Cabinets</option>
+                        <option value="built-ins">Built-ins</option>
+                        <option value="restoration">Restoration</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Materials
+                      </label>
+                      <input
+                        type="text"
+                        value={newProject.materials}
+                        onChange={(e) => setNewProject({...newProject, materials: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                        placeholder="e.g., Oak, Steel"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Image URL
+                    </label>
+                    <input
+                      type="url"
+                      value={newProject.image_url}
+                      onChange={(e) => setNewProject({...newProject, image_url: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Client Story (Optional)
+                    </label>
+                    <textarea
+                      value={newProject.client_story}
+                      onChange={(e) => setNewProject({...newProject, client_story: e.target.value})}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      placeholder="Tell the story behind this project"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-4 mt-6">
+                  <button
+                    onClick={() => setShowAddProjectModal(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addProject}
+                    className="px-4 py-2 bg-wood-600 text-white rounded-lg hover:bg-wood-700"
+                  >
+                    Add Project
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications */}
+      <NotificationToast 
+        notifications={notifications} 
+        onRemove={removeNotification} 
+      />
       
       <Footer />
     </div>

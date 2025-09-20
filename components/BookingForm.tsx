@@ -40,7 +40,7 @@ export default function BookingForm({ defaultProjectType }: Props) {
       };
 
       const { error } = await supabase
-        .from('bookings')
+        .from('booking_submissions')
         .insert([newBooking]);
 
       if (error) throw error;
@@ -143,10 +143,10 @@ export default function BookingForm({ defaultProjectType }: Props) {
                 type="date"
                 id="preferred_date"
                 {...register('preferred_date', { required: 'Start date is required' })}
-                className="block w-full rounded-md border-stone-300 shadow-sm focus:border-stone-500 focus:ring-stone-500"
+                className="block w-full rounded-md border-stone-300 shadow-sm focus:border-stone-500 focus:ring-stone-500 pr-10"
                 disabled={isSubmitting}
               />
-              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-stone-400" />
+              <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-stone-400 pointer-events-none" />
             </div>
             {errors.preferred_date && (
               <p className="mt-1 text-sm text-red-600">{errors.preferred_date.message}</p>
@@ -161,16 +161,16 @@ export default function BookingForm({ defaultProjectType }: Props) {
               <select
                 id="budget"
                 {...register('budget', { required: 'Budget range is required' })}
-                className="block w-full rounded-md border-stone-300 shadow-sm focus:border-stone-500 focus:ring-stone-500"
+                className="block w-full rounded-md border-stone-300 shadow-sm focus:border-stone-500 focus:ring-stone-500 pr-10"
                 disabled={isSubmitting}
               >
                 <option value="">Select budget range</option>
-                <option value="Under $1,000">Under $1,000</option>
-                <option value="$1,000 - $5,000">$1,000 - $5,000</option>
-                <option value="$5,000 - $10,000">$5,000 - $10,000</option>
-                <option value="$10,000+">$10,000+</option>
+                <option value="Under ₦500,000">Under ₦500,000</option>
+                <option value="₦500,000 - ₦2,000,000">₦500,000 - ₦2,000,000</option>
+                <option value="₦2,000,000 - ₦5,000,000">₦2,000,000 - ₦5,000,000</option>
+                <option value="₦5,000,000+">₦5,000,000+</option>
               </select>
-              <DollarSign className="absolute right-3 top-2.5 h-5 w-5 text-stone-400" />
+              <DollarSign className="absolute right-3 top-2.5 h-5 w-5 text-stone-400 pointer-events-none" />
             </div>
             {errors.budget && (
               <p className="mt-1 text-sm text-red-600">{errors.budget.message}</p>
