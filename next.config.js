@@ -4,6 +4,9 @@ const nextConfig = {
     domains: ['lmqkuvyyhtmdqjdkzomb.supabase.co'],
   },
   // Remove any experimental or deprecated options
+  experimental: {
+    serverActions: true,
+  }
 }
 
 module.exports = nextConfig
