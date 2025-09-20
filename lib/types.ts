@@ -24,10 +24,12 @@ interface BookingSubmission {
   phone?: string
   project_type: string
   preferred_date: string
+  scheduled_date?: string
   budget: string
   message: string
   status: BookingStatus
   created_at: string
+  updated_at?: string
 }
 
 export type { AuthState, Project, BookingSubmission, BookingStatus }

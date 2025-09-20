@@ -6,7 +6,10 @@ import { Calendar, DollarSign, Send } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { BookingSubmission, BookingStatus } from '@/types';
 
-type BookingFormData = Omit<BookingSubmission, 'id' | 'status' | 'created_at'>;
+type BookingFormData = Omit<BookingSubmission, 'id' | 'status' | 'created_at'> & {
+  budget_amount: number;
+  budget_currency: string;
+};
 
 interface Props {
   defaultProjectType?: string;
@@ -34,6 +37,7 @@ export default function BookingForm({ defaultProjectType }: Props) {
     try {
       const newBooking = {
         ...data,
+        budget: `${data.budget_currency} ${data.budget_amount.toLocaleString()}`,
         id: crypto.randomUUID(),
         status: 'pending' as BookingStatus,
         created_at: new Date().toISOString(),
@@ -155,25 +159,36 @@ export default function BookingForm({ defaultProjectType }: Props) {
 
           <div>
             <label htmlFor="budget" className="block text-sm font-medium text-stone-700">
-              Budget Range *
+              Budget *
             </label>
-            <div className="mt-1 relative">
-              <select
-                id="budget"
-                {...register('budget', { required: 'Budget range is required' })}
-                className="block w-full rounded-md border-stone-300 shadow-sm focus:border-stone-500 focus:ring-stone-500 pr-10"
-                disabled={isSubmitting}
-              >
-                <option value="">Select budget range</option>
-                <option value="Under ₦500,000">Under ₦500,000</option>
-                <option value="₦500,000 - ₦2,000,000">₦500,000 - ₦2,000,000</option>
-                <option value="₦2,000,000 - ₦5,000,000">₦2,000,000 - ₦5,000,000</option>
-                <option value="₦5,000,000+">₦5,000,000+</option>
-              </select>
-              <DollarSign className="absolute right-3 top-2.5 h-5 w-5 text-stone-400 pointer-events-none" />
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <div className="relative">
+                <input
+                  type="number"
+                  id="budget_amount"
+                  {...register('budget_amount', { required: 'Budget amount is required' })}
+                  className="block w-full rounded-md border-stone-300 shadow-sm focus:border-stone-500 focus:ring-stone-500"
+                  placeholder="Enter amount"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="relative">
+                <select
+                  id="budget_currency"
+                  {...register('budget_currency', { required: 'Currency is required' })}
+                  className="block w-full rounded-md border-stone-300 shadow-sm focus:border-stone-500 focus:ring-stone-500"
+                  disabled={isSubmitting}
+                >
+                  <option value="">Currency</option>
+                  <option value="NGN">₦ NGN</option>
+                  <option value="USD">$ USD</option>
+                  <option value="EUR">€ EUR</option>
+                  <option value="GBP">£ GBP</option>
+                </select>
+              </div>
             </div>
-            {errors.budget && (
-              <p className="mt-1 text-sm text-red-600">{errors.budget.message}</p>
+            {(errors.budget_amount || errors.budget_currency) && (
+              <p className="mt-1 text-sm text-red-600">Budget amount and currency are required</p>
             )}
           </div>
         </div>

@@ -55,6 +55,9 @@ export default function AdminPage() {
     client_story: ''
   })
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [showScheduledDateModal, setShowScheduledDateModal] = useState(false)
+  const [selectedBooking, setSelectedBooking] = useState<BookingSubmission | null>(null)
+  const [scheduledDate, setScheduledDate] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -138,16 +141,29 @@ export default function AdminPage() {
 
   const updateBookingStatus = async (id: string, status: string) => {
     try {
+      const booking = bookings.find(b => b.id === id)
+      
+      // If changing to scheduled, show date picker modal
+      if (status === 'scheduled') {
+        setSelectedBooking(booking || null)
+        setShowScheduledDateModal(true)
+        return
+      }
+
+      const updateData: any = { 
+        status,
+        updated_at: new Date().toISOString()
+      }
+
       const { error } = await supabase
         .from('booking_submissions')
-        .update({ status })
+        .update(updateData)
         .eq('id', id)
 
       if (error) throw error
-      
-      const booking = bookings.find(b => b.id === id)
+
       setBookings(bookings.map(b => 
-        b.id === id ? { ...b, status: status as any } : b
+        b.id === id ? { ...b, status: status as any, updated_at: updateData.updated_at } : b
       ))
 
       // Add notification based on status change
@@ -155,19 +171,19 @@ export default function AdminPage() {
         addNotification({
           type: 'info',
           title: 'Booking Contacted',
-          message: `You've marked the booking from ${booking?.name} as contacted.`
-        })
-      } else if (status === 'scheduled') {
-        addNotification({
-          type: 'success',
-          title: 'Booking Scheduled',
-          message: `Booking from ${booking?.name} has been scheduled.`
+          message: `You've marked the booking from ${booking?.name} as contacted. Consider sending a confirmation email.`
         })
       } else if (status === 'completed') {
         addNotification({
           type: 'success',
           title: 'Project Completed',
           message: `Project for ${booking?.name} has been marked as completed.`
+        })
+      } else if (status === 'cancelled') {
+        addNotification({
+          type: 'info',
+          title: 'Booking Cancelled',
+          message: `Booking from ${booking?.name} has been cancelled.`
         })
       }
     } catch (error) {
@@ -176,6 +192,49 @@ export default function AdminPage() {
         type: 'error',
         title: 'Update Failed',
         message: 'Failed to update booking status. Please try again.'
+      })
+    }
+  }
+
+  const confirmScheduledDate = async () => {
+    if (!selectedBooking || !scheduledDate) return
+
+    try {
+      const { error } = await supabase
+        .from('booking_submissions')
+        .update({ 
+          status: 'scheduled',
+          scheduled_date: scheduledDate,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedBooking.id)
+
+      if (error) throw error
+
+      setBookings(bookings.map(b => 
+        b.id === selectedBooking.id ? { 
+          ...b, 
+          status: 'scheduled' as any, 
+          scheduled_date: scheduledDate,
+          updated_at: new Date().toISOString()
+        } : b
+      ))
+
+      addNotification({
+        type: 'success',
+        title: 'Booking Scheduled',
+        message: `Booking from ${selectedBooking.name} has been scheduled for ${new Date(scheduledDate).toLocaleDateString()}.`
+      })
+
+      setShowScheduledDateModal(false)
+      setSelectedBooking(null)
+      setScheduledDate('')
+    } catch (error) {
+      console.error('Error scheduling booking:', error)
+      addNotification({
+        type: 'error',
+        title: 'Scheduling Failed',
+        message: 'Failed to schedule booking. Please try again.'
       })
     }
   }
@@ -343,34 +402,44 @@ export default function AdminPage() {
                   </div>
                   
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {projects.map((project) => (
-                <div key={project.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
+              {projects.map((project) => (
+                <div 
+                  key={project.id} 
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => startEditProject(project)}
+                >
                   <div className="aspect-video bg-gray-100 rounded-t-lg overflow-hidden">
                     <img
-                      src={project.image_url}
+                      src={project.image_url || 'https://via.placeholder.com/400x225?text=Project+Image'}
                       alt={project.title}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://via.placeholder.com/400x225?text=Project+Image';
+                      }}
                     />
-                              </div>
+                  </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-900 mb-2">{project.title}</h3>
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">{project.description}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">{project.project_type}</span>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => startEditProject(project)}
                           className="p-1 text-gray-400 hover:text-gray-600"
+                          title="Edit project"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => deleteProject(project.id)}
                           className="p-1 text-gray-400 hover:text-red-600"
+                          title="Delete project"
                         >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -429,7 +498,12 @@ export default function AdminPage() {
                               {booking.budget}
                             </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(booking.preferred_date).toLocaleDateString()}
+                          <div>
+                            <div className="font-medium">Preferred: {new Date(booking.preferred_date).toLocaleDateString()}</div>
+                            {(booking as any).scheduled_date && (
+                              <div className="text-green-600 text-xs">Scheduled: {new Date((booking as any).scheduled_date).toLocaleDateString()}</div>
+                            )}
+                          </div>
                         </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <select
@@ -674,6 +748,62 @@ export default function AdminPage() {
                     className="px-4 py-2 bg-wood-600 text-white rounded-lg hover:bg-wood-700"
                   >
                     Update Project
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled Date Modal */}
+      {showScheduledDateModal && selectedBooking && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-75">
+          <div className="min-h-screen px-4 flex items-center justify-center">
+            <div className="bg-white rounded-xl overflow-hidden max-w-md w-full shadow-2xl">
+              <div className="p-6">
+                <h3 className="text-xl font-bold mb-4">Schedule Booking</h3>
+                <p className="text-gray-600 mb-4">
+                  Set the scheduled date for <strong>{selectedBooking.name}</strong>'s project.
+                </p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Scheduled Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-wood-500 focus:border-transparent"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                  
+                  <div className="text-sm text-gray-500">
+                    <p><strong>Preferred Date:</strong> {new Date(selectedBooking.preferred_date).toLocaleDateString()}</p>
+                    <p><strong>Project:</strong> {selectedBooking.project_type}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-4 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowScheduledDateModal(false)
+                      setSelectedBooking(null)
+                      setScheduledDate('')
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmScheduledDate}
+                    disabled={!scheduledDate}
+                    className="px-4 py-2 bg-wood-600 text-white rounded-lg hover:bg-wood-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Schedule Booking
                   </button>
                 </div>
               </div>

@@ -18,11 +18,11 @@ interface Props {
 
 export default function NotificationToast({ notifications, onRemove }: Props) {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 space-y-2">
       {notifications.map((notification) => (
         <div
           key={notification.id}
-          className={`max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden ${
+          className={`max-w-md w-full bg-white shadow-xl rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden ${
             notification.type === 'success' ? 'border-l-4 border-green-400' :
             notification.type === 'error' ? 'border-l-4 border-red-400' :
             'border-l-4 border-blue-400'
