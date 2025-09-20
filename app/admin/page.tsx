@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Plus, Edit, Trash2, Eye, Mail, Calendar, User, Filter } from 'lucide-react'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
-import { supabase, Project, ContactSubmission, BookingSubmission } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import type { BookingSubmission, BookingStatus, Project, ContactSubmission, ContactStatus } from '@/types'
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'projects' | 'contacts' | 'bookings'>('projects')
@@ -66,7 +67,7 @@ export default function AdminPage() {
     }
   }
 
-  const updateContactStatus = async (contactId: string, status: string) => {
+  const updateContactStatus = async (contactId: string, status: ContactStatus) => {
     try {
       const { error } = await supabase
         .from('contact_submissions')
@@ -83,22 +84,22 @@ export default function AdminPage() {
     }
   }
 
-  const updateBookingStatus = async (bookingId: string, status: string) => {
-    try {
-      const { error } = await supabase
-        .from('booking_submissions')
-        .update({ status })
-        .eq('id', bookingId)
+async function updateBookingStatus(bookingId: string, status: BookingStatus) {
+  try {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status })
+      .eq('id', bookingId);
 
-      if (error) throw error
-      
-      setBookings(bookings.map(b => 
-        b.id === bookingId ? { ...b, status } : b
-      ))
-    } catch (error) {
-      console.error('Error updating booking status:', error)
-    }
+    if (error) throw error;
+
+    setBookings(bookings.map(b => 
+      b.id === bookingId ? { ...b, status: status as BookingStatus } : b
+    ));
+  } catch (error) {
+    console.error('Error updating booking status:', error);
   }
+}
 
   const tabs = [
     { id: 'projects', name: 'Projects', count: projects.length },
@@ -213,7 +214,7 @@ export default function AdminPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <button
-                                onClick={() => toggleProjectFeatured(project.id, project.featured)}
+                                onClick={() => toggleProjectFeatured(project.id, project.featured || false)}
                                 className={`px-3 py-1 text-xs font-medium rounded-full ${
                                   project.featured
                                     ? 'bg-sage-100 text-sage-800'
@@ -292,7 +293,7 @@ export default function AdminPage() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <select
                                 value={contact.status}
-                                onChange={(e) => updateContactStatus(contact.id, e.target.value)}
+                                onChange={(e) => updateContactStatus(contact.id, e.target.value as ContactStatus)}
                                 className="text-sm border-gray-300 rounded-md"
                               >
                                 <option value="new">New</option>
@@ -374,7 +375,7 @@ export default function AdminPage() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <select
                                 value={booking.status}
-                                onChange={(e) => updateBookingStatus(booking.id, e.target.value)}
+                                onChange={(e) => updateBookingStatus(booking.id, e.target.value as BookingStatus)}
                                 className="text-sm border-gray-300 rounded-md"
                               >
                                 <option value="pending">Pending</option>

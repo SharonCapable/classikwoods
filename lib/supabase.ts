@@ -11,10 +11,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-  },
-  storage: {
-    // This enables automatic retries for failed uploads
-    retryAttempts: 3,
   }
 })
 
