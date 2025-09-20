@@ -1,12 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
   images: {
-    domains: ['localhost', 'supabase.co'],
-    formats: ['image/webp', 'image/avif'],
+    domains: ['lmqkuvyyhtmdqjdkzomb.supabase.co'],
   },
+  // Remove any experimental or deprecated options
 }
 
 module.exports = nextConfig
